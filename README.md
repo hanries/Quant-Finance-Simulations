@@ -8,12 +8,3 @@ How to Run Any Simulation
 Navigate to the simulation folder
 Install dependencies: pip install matplotlib numpy
 Run: python simulation.py
-
-Structure
-simulations/
-├── 01_francisco_dice/
-│   ├── simulation.py
-│   └── README.md
-├── 02_.../
-└── 03_.../
-Each folder is self-contained with its own code and explanation.
