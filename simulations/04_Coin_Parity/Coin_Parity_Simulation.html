@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coin Parity Simulation</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,400;0,600;1,300&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f2eb;
+    --surface: #ede9e0;
+    --surface2: #e4dfd3;
+    --ink: #1a1814;
+    --ink2: #5a5650;
+    --ink3: #9a9590;
+    --accent: #c84b2f;
+    --accent2: #2f6ec8;
+    --border: rgba(26,24,20,0.12);
+    --border2: rgba(26,24,20,0.22);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  header {
+    max-width: 760px;
+    margin: 0 auto 3rem;
+    border-bottom: 1px solid var(--border2);
+    padding-bottom: 1.5rem;
+  }
+
+  header h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: clamp(2rem, 5vw, 3rem);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 0.5rem;
+  }
+
+  header h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  header p {
+    font-size: 12px;
+    color: var(--ink3);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .main {
+    max-width: 760px;
+    margin: 0 auto;
+    display: grid;
+    gap: 2rem;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 2px;
+    padding: 1.5rem;
+  }
+
+  .card-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink3);
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    color: var(--ink3);
+    transition: all 0.15s;
+    border-right: 1px solid var(--border2);
+  }
+
+  .tab:last-child { border-right: none; }
+
+  .tab.active {
+    background: var(--ink);
+    color: var(--bg);
+  }
+
+  .tab:not(.active):hover {
+    background: var(--surface2);
+    color: var(--ink);
+  }
+
+  .controls { display: grid; gap: 1rem; }
+
+  .ctrl {
+    display: grid;
+    grid-template-columns: 110px 1fr 52px;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .ctrl label {
+    font-size: 11px;
+    color: var(--ink2);
+    letter-spacing: 0.04em;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--border2);
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--ink);
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+  .val {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .run-btn {
+    width: 100%;
+    margin-top: 1.25rem;
+    padding: 12px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    background: var(--ink);
+    color: var(--bg);
+    border: none;
+    border-radius: 2px;
+    transition: opacity 0.15s;
+  }
+
+  .run-btn:hover { opacity: 0.8; }
+  .run-btn:active { opacity: 0.6; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (max-width: 560px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .stat {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 0.75rem;
+  }
+
+  .stat .lbl {
+    font-size: 10px;
+    color: var(--ink3);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .stat .num {
+    font-size: 20px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+
+  .stat .num.accent { color: var(--accent); }
+  .stat .num.accent2 { color: var(--accent2); }
+
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 240px;
+  }
+
+  .legend {
+    display: flex;
+    gap: 20px;
+    margin-top: 10px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: var(--ink3);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .legend-dot {
+    width: 20px;
+    height: 2px;
+    flex-shrink: 0;
+  }
+
+  .formula-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 2px 2px 0;
+    padding: 1rem 1.25rem;
+    font-size: 13px;
+    color: var(--ink2);
+    line-height: 1.7;
+  }
+
+  .formula-box strong {
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  .formula-box .formula {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 16px;
+    color: var(--accent);
+    display: block;
+    margin: 6px 0;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 1rem 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Coin Parity<br><em>Simulation</em></h1>
+  <p>Probability of an even number of heads</p>
+</header>
+
+<div class="main">
+
+  <div class="card">
+    <div class="card-title">Problem variant</div>
+    <div class="tabs">
+      <button class="tab active" onclick="setMode('with')">With fair coin</button>
+      <button class="tab" onclick="setMode('without')">Without fair coin</button>
+    </div>
+
+    <div id="formula-with" class="formula-box">
+      <strong>n</strong> coins: 1 fair (p = ½) + <strong>n−1</strong> biased (p = λ)<br>
+      <div class="divider"></div>
+      The fair coin forces P(even) = ½ regardless of λ or n.
+      <span class="formula">P(even) = ½</span>
+    </div>
+    <div id="formula-without" class="formula-box" style="display:none; border-left-color: var(--accent2);">
+      <strong>n</strong> biased coins, each with P(H) = λ<br>
+      <div class="divider"></div>
+      Result depends on both λ and n.
+      <span class="formula" style="color: var(--accent2);">P(even) = [1 + (1−2λ)ⁿ] / 2</span>
+    </div>
+
+    <div class="controls" style="margin-top: 1.25rem;">
+      <div class="ctrl">
+        <label>Coins (n)</label>
+        <input type="range" min="2" max="20" value="5" step="1" id="nSlider" oninput="update()">
+        <span class="val" id="nVal">5</span>
+      </div>
+      <div class="ctrl" id="lambdaCtrl">
+        <label>Lambda (λ)</label>
+        <input type="range" min="0.01" max="0.99" value="0.30" step="0.01" id="lSlider" oninput="update()">
+        <span class="val" id="lVal">0.30</span>
+      </div>
+      <div class="ctrl">
+        <label>Flips</label>
+        <input type="range" min="100" max="10000" value="3000" step="100" id="fSlider" oninput="update()">
+        <span class="val" id="fVal">3000</span>
+      </div>
+    </div>
+
+    <button class="run-btn" onclick="runSim()">↻ Run simulation</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Results</div>
+    <div class="stats">
+      <div class="stat">
+        <div class="lbl">Simulated P(even)</div>
+        <div class="num accent" id="simEven">—</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Theory P(even)</div>
+        <div class="num" id="thEven">—</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Simulated P(odd)</div>
+        <div class="num accent2" id="simOdd">—</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Total flips</div>
+        <div class="num" id="totalFlips">—</div>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <canvas id="chart"></canvas>
+    </div>
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-dot" style="background: #c84b2f;"></div>
+        Simulated
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: #9a9590; border-top: 2px dashed #9a9590; height: 0;"></div>
+        Theoretical
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let mode = 'with';
+let chart;
+let history = [];
+
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && m === 'with') || (i === 1 && m === 'without'));
+  });
+  document.getElementById('formula-with').style.display = m === 'with' ? '' : 'none';
+  document.getElementById('formula-without').style.display = m === 'without' ? '' : 'none';
+  history = [];
+  runSim();
+}
+
+function getParams() {
+  return {
+    n: parseInt(document.getElementById('nSlider').value),
+    lam: parseFloat(document.getElementById('lSlider').value),
+    flips: parseInt(document.getElementById('fSlider').value)
+  };
+}
+
+function update() {
+  const { n, lam, flips } = getParams();
+  document.getElementById('nVal').textContent = n;
+  document.getElementById('lVal').textContent = lam.toFixed(2);
+  document.getElementById('fVal').textContent = flips.toLocaleString();
+}
+
+function theory(n, lam, withFair) {
+  if (withFair) return 0.5;
+  return (1 + Math.pow(1 - 2 * lam, n)) / 2;
+}
+
+function simulate(n, lam, flips, withFair) {
+  let evenCount = 0;
+  for (let i = 0; i < flips; i++) {
+    let heads = 0;
+    if (withFair) heads += Math.random() < 0.5 ? 1 : 0;
+    const biasedCount = withFair ? n - 1 : n;
+    for (let j = 0; j < biasedCount; j++) {
+      heads += Math.random() < lam ? 1 : 0;
+    }
+    if (heads % 2 === 0) evenCount++;
+  }
+  return evenCount / flips;
+}
+
+function runSim() {
+  const { n, lam, flips } = getParams();
+  update();
+  const withFair = mode === 'with';
+  const simVal = simulate(n, lam, flips, withFair);
+  const thVal = theory(n, lam, withFair);
+
+  document.getElementById('simEven').textContent = simVal.toFixed(3);
+  document.getElementById('thEven').textContent = thVal.toFixed(3);
+  document.getElementById('simOdd').textContent = (1 - simVal).toFixed(3);
+  document.getElementById('totalFlips').textContent = flips.toLocaleString();
+
+  history.push(parseFloat(simVal.toFixed(4)));
+  if (history.length > 24) history.shift();
+
+  const labels = history.map((_, i) => `${i + 1}`);
+  const theoryArr = history.map(() => parseFloat(thVal.toFixed(4)));
+
+  if (chart) {
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = history;
+    chart.data.datasets[1].data = theoryArr;
+    chart.update();
+  } else {
+    chart = new Chart(document.getElementById('chart'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Simulated',
+            data: history,
+            borderColor: '#c84b2f',
+            backgroundColor: 'rgba(200,75,47,0.06)',
+            tension: 0.3,
+            pointRadius: 3,
+            pointBackgroundColor: '#c84b2f',
+            borderWidth: 1.5,
+            fill: true
+          },
+          {
+            label: 'Theory',
+            data: theoryArr,
+            borderColor: '#9a9590',
+            borderDash: [5, 4],
+            pointRadius: 0,
+            borderWidth: 1.5
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: {
+            min: 0, max: 1,
+            ticks: {
+              font: { family: 'DM Mono', size: 10 },
+              color: '#9a9590',
+              callback: v => v.toFixed(2)
+            },
+            grid: { color: 'rgba(26,24,20,0.07)' },
+            border: { color: 'rgba(26,24,20,0.15)' }
+          },
+          x: {
+            ticks: {
+              font: { family: 'DM Mono', size: 10 },
+              color: '#9a9590',
+              autoSkip: true,
+              maxTicksLimit: 8
+            },
+            grid: { display: false },
+            border: { color: 'rgba(26,24,20,0.15)' }
+          }
+        }
+      }
+    });
+  }
+}
+
+runSim();
+</script>
+</body>
+</html>
