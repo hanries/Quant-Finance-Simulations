@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Horse Race — 3 Strategies</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Fraunces:ital,opsz,wght@0,9..144,300;1,9..144,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f0f10;
+  --surf: #18191b;
+  --surf2: #202224;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.13);
+  --text: #e4e2dc;
+  --muted: #787670;
+  --hint: #3e3e3c;
+  --gold: #d4a843;
+  --silver: #8fa3b2;
+  --bronze: #b8734a;
+  --green: #5a9e72;
+  --accent: #c8a060;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px; min-height: 100vh; }
+
+header { max-width: 980px; margin: 0 auto; padding: 2rem 2rem 1.25rem; border-bottom: 1px solid var(--border); }
+header h1 { font-family: 'Fraunces', serif; font-weight: 300; font-size: 2rem; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 0.4rem; }
+header h1 em { font-style: italic; color: var(--accent); }
+header p { color: var(--muted); font-size: 11px; line-height: 1.8; max-width: 580px; }
+
+.tabs { max-width: 980px; margin: 0 auto; display: flex; border-bottom: 1px solid var(--border); }
+.tab { flex: 1; padding: 12px 8px; cursor: pointer; font-size: 11px; color: var(--muted); background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; text-align: center; line-height: 1.5; letter-spacing: 0.02em; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab .tnum { display: block; font-family: 'Fraunces', serif; font-style: italic; font-size: 1.25rem; font-weight: 300; color: inherit; }
+
+.main { max-width: 980px; margin: 0 auto; padding: 1.5rem 2rem 3rem; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+.desc { font-size: 11px; color: var(--muted); line-height: 1.8; padding: 10px 14px; border-left: 2px solid var(--border2); margin-bottom: 1.25rem; }
+.desc strong { color: var(--text); font-weight: 500; }
+
+.controls { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.btn { padding: 6px 16px; border: 1px solid var(--border2); border-radius: 6px; cursor: pointer; font-family: 'DM Mono', monospace; font-size: 11px; background: var(--surf); color: var(--text); transition: all 0.15s; letter-spacing: 0.04em; }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn.run { background: var(--accent); color: #0f0f10; border-color: var(--accent); font-weight: 500; }
+.btn.run:hover { opacity: 0.85; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.sep { flex: 1; }
+.spd-wrap { display: flex; align-items: center; gap: 8px; }
+.spd-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+input[type=range] { -webkit-appearance: none; width: 80px; height: 3px; background: var(--border2); border-radius: 2px; outline: none; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 11px; border-radius: 50%; background: var(--accent); cursor: pointer; }
+
+.legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.leg { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--muted); }
+.leg-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+/* ── round rows ── */
+.rounds-wrap { display: flex; flex-direction: column; gap: 0; }
+
+.round-block {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  opacity: 0;
+  transform: translateY(5px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.round-block.visible { opacity: 1; transform: translateY(0); }
+
+.round-label {
+  width: 130px;
+  flex-shrink: 0;
+  padding: 16px 16px 16px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  border-right: 1px solid var(--border);
+}
+.r-name { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 3px; }
+.r-title { font-family: 'Fraunces', serif; font-style: italic; font-size: 1.05rem; font-weight: 300; color: var(--text); line-height: 1.2; }
+.r-sub { font-size: 10px; color: var(--hint); margin-top: 5px; line-height: 1.5; color: #555; }
+
+.round-body { flex: 1; padding: 16px 0 16px 20px; min-width: 0; }
+
+/* ── race grid inside a round ── */
+.races-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 0; }
+
+.race-box {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  min-width: 110px;
+}
+.race-box-hdr {
+  background: var(--surf2);
+  padding: 4px 10px;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.horses-col { padding: 7px 8px; display: flex; flex-direction: column; gap: 3px; }
+
+/* ── horse chips ── */
+.horse {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.h-racing   { background: var(--surf2); color: var(--text); }
+.h-first    { background: rgba(212,168,67,0.18); color: var(--gold); }
+.h-second   { background: rgba(143,163,178,0.15); color: var(--silver); }
+.h-third    { background: rgba(184,115,74,0.15); color: var(--bronze); }
+.h-advance  { background: rgba(90,158,114,0.14); color: var(--green); }
+.h-champion { background: rgba(212,168,67,0.25); color: var(--gold); border-color: rgba(212,168,67,0.35); }
+.h-elim     { background: transparent; color: #3a3a38; text-decoration: line-through; }
+
+.pd { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.pd1 { background: var(--gold); }
+.pd2 { background: var(--silver); }
+.pd3 { background: var(--bronze); }
+.pda { background: var(--green); }
+.pdc { background: var(--gold); }
+.pdx { background: #2e2e2c; }
+
+.hspd { font-size: 9px; color: var(--muted); margin-left: auto; font-weight: 400; }
+.h-elim .hspd { color: #2e2e2c; }
+
+/* ── explain ── */
+.explain {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.75;
+  padding: 8px 12px;
+  background: var(--surf);
+  border-radius: 6px;
+  border-left: 2px solid var(--border2);
+}
+.explain .hi { color: var(--text); }
+
+/* ── final ── */
+.final-banner {
+  margin-top: 1.5rem;
+  padding: 16px 20px;
+  border: 1px solid rgba(212,168,67,0.22);
+  border-radius: 10px;
+  background: rgba(212,168,67,0.04);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.final-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 8px; }
+.final-horses { display: flex; gap: 14px; flex-wrap: wrap; }
+.fh { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+.fm1 { color: var(--gold); }
+.fm2 { color: var(--silver); }
+.fm3 { color: var(--bronze); }
+.fspd { color: var(--muted); font-size: 10px; }
+.race-count { font-family: 'Fraunces', serif; font-style: italic; font-size: 3rem; font-weight: 300; color: var(--accent); line-height: 1; text-align: center; }
+.race-count span { display: block; font-family: 'DM Mono', monospace; font-style: normal; font-size: 10px; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.08em; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>25 horses, 5 lanes — <em>three strategies</em></h1>
+  <p>Find the 3 fastest horses from 25 using only race results — no stopwatch. Each strategy unfolds round by round. Watch how many races each one wastes.</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab(0)"><span class="tnum">01</span>Rolling top 3</div>
+  <div class="tab" onclick="switchTab(1)"><span class="tnum">02</span>Batch + bracket</div>
+  <div class="tab" onclick="switchTab(2)"><span class="tnum">03</span>Optimal — 7 races</div>
+</div>
+
+<div class="main">
+  <div id="p0" class="panel active"></div>
+  <div id="p1" class="panel"></div>
+  <div id="p2" class="panel"></div>
+</div>
+
+<script>
+function rng(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
+function makeHorses(){const s=rng(Array.from({length:25},(_,i)=>i+1));return s.map((sp,i)=>({id:i,speed:sp,name:'H'+String(i+1).padStart(2,'0')}));}
+function raceGroup(g){return[...g].sort((a,b)=>b.speed-a.speed);}
+
+function switchTab(i){
+  document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('active',i===j));
+  document.querySelectorAll('.panel').forEach((p,j)=>p.classList.toggle('active',i===j));
+}
+
+const LEGEND = `<div class="legend">
+  <div class="leg"><div class="leg-dot" style="background:var(--gold)"></div>1st</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--silver)"></div>2nd</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--bronze)"></div>3rd</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--green)"></div>advances</div>
+  <div class="leg"><div class="leg-dot" style="background:#2e2e2c"></div>eliminated</div>
+</div>`;
+
+function controls(id) {
+  return `${LEGEND}
+    <div class="sep"></div>
+    <div class="spd-wrap"><span class="spd-lbl">Speed</span><input type="range" min="150" max="950" value="550" id="spd${id}" step="1"></div>
+    <button class="btn run" id="run${id}">&#9654; Run</button>
+    <button class="btn" id="rst${id}">Reset</button>`;
+}
+
+function chip(h, cls, dotCls) {
+  return `<div class="horse ${cls}"><span class="pd ${dotCls}"></span>${h.name}<span class="hspd">${h.speed}</span></div>`;
+}
+
+function raceBox(label, result, stateOf) {
+  let html = `<div class="race-box"><div class="race-box-hdr">${label}</div><div class="horses-col">`;
+  result.forEach((h,i)=>{
+    const s = stateOf(h,i);
+    html += chip(h, s.cls, s.dot);
+  });
+  return html + `</div></div>`;
+}
+
+function roundBlock(rLabel, rTitle, rSub, racesHTML, explainHTML) {
+  const b = document.createElement('div');
+  b.className = 'round-block';
+  b.innerHTML = `
+    <div class="round-label">
+      <div class="r-name">${rLabel}</div>
+      <div class="r-title">${rTitle}</div>
+      ${rSub?`<div class="r-sub">${rSub}</div>`:''}
+    </div>
+    <div class="round-body">
+      <div class="races-row">${racesHTML}</div>
+      ${explainHTML?`<div class="explain">${explainHTML}</div>`:''}
+    </div>`;
+  return b;
+}
+
+function showBlock(wrap, b) {
+  wrap.appendChild(b);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>b.classList.add('visible')));
+}
+
+function finalBanner(top3, races, suffix='') {
+  const medals = ['fm1','fm2','fm3'];
+  return `<div class="final-banner">
+    <div>
+      <div class="final-lbl">Top 3 found${suffix}</div>
+      <div class="final-horses">
+        ${top3.map((h,i)=>`<div class="fh"><span class="${medals[i]}">&#9679;</span>${h.name}<span class="fspd">(speed ${h.speed})</span></div>`).join('')}
+      </div>
+    </div>
+    <div class="race-count">${races}<span>races</span></div>
+  </div>`;
+}
+
+// ── State helpers ──
+const S = {
+  first:    {cls:'h-first',   dot:'pd1'},
+  second:   {cls:'h-second',  dot:'pd2'},
+  third:    {cls:'h-third',   dot:'pd3'},
+  advance:  {cls:'h-advance', dot:'pda'},
+  champion: {cls:'h-champion',dot:'pdc'},
+  elim:     {cls:'h-elim',    dot:'pdx'},
+  racing:   {cls:'h-racing',  dot:'pdx'},
+};
+
+// ════════ STRATEGY 1 — Rolling top 3 ════════
+(function(){
+  const panel = document.getElementById('p0');
+  panel.innerHTML = `<div class="desc"><strong>Idea:</strong> Race 5 at a time. Keep the top 3, drop the rest, add 2 new horses, repeat — until all 25 have competed. The leading 3 roll forward into every subsequent race.</div>
+    <div class="controls" id="c0">${controls(0)}</div>
+    <div class="rounds-wrap" id="w0"></div><div id="f0"></div>`;
+
+  let timer, running=false;
+
+  function reset(){
+    running=false; clearTimeout(timer);
+    document.getElementById('w0').innerHTML='';
+    document.getElementById('f0').innerHTML='';
+    document.getElementById('run0').disabled=false;
+  }
+
+  document.getElementById('rst0').onclick=reset;
+  document.getElementById('run0').onclick=function(){
+    if(running)return; running=true; reset(); running=true;
+    document.getElementById('run0').disabled=true;
+    const wrap=document.getElementById('w0'), fin=document.getElementById('f0');
+    const horses=makeHorses();
+    let remaining=[...horses], top3=[], raceNum=0;
+
+    function step(){
+      if(!running)return;
+      const delay=1060-parseInt(document.getElementById('spd0').value);
+      let group;
+      if(!top3.length){
+        if(!remaining.length){fin.innerHTML=finalBanner(top3,raceNum);running=false;document.getElementById('run0').disabled=false;return;}
+        group=remaining.splice(0,5);
+      } else {
+        if(!remaining.length){fin.innerHTML=finalBanner(top3.slice(0,3),raceNum);running=false;document.getElementById('run0').disabled=false;return;}
+        group=[...top3.slice(0,3),...remaining.splice(0,Math.min(2,remaining.length))];
+      }
+      raceNum++;
+      const result=raceGroup(group);
+      top3=result.slice(0,3);
+      const rHTML=raceBox(`Race ${raceNum}`,result,(h,i)=>i===0?S.first:i===1?S.second:i===2?S.third:S.elim);
+      const carry=top3.map(h=>`<span class="hi">${h.name}</span>`).join(', ');
+      const elim=result.slice(3).map(h=>h.name).join(', ');
+      const exp=remaining.length
+        ?`${carry} carry forward${elim?'; '+elim+' eliminated':''}. <span class="hi">${remaining.length} horses</span> still waiting.`
+        :`All horses have raced. ${carry} are the final top 3.`;
+      const block=roundBlock(`Race ${raceNum}`,raceNum===1?'First batch':`Race ${raceNum}`,`${remaining.length} horses left`,rHTML,exp);
+      showBlock(wrap,block);
+      if(remaining.length===0){
+        setTimeout(()=>{fin.innerHTML=finalBanner(top3.slice(0,3),raceNum);running=false;document.getElementById('run0').disabled=false;},delay);
+      } else {
+        timer=setTimeout(step,delay);
+      }
+    }
+    step();
+  };
+})();
+
+// ════════ STRATEGY 2 — Batch + bracket ════════
+(function(){
+  const panel = document.getElementById('p1');
+  panel.innerHTML = `<div class="desc"><strong>Idea:</strong> Race 5 groups of 5. Then run a bracket: all 5 first-placers race (race 6), all 5 second-placers (race 7), all 5 third-placers (race 8). Finally, the top 3 from race 6 plus winners of races 7 & 8 compete in a championship (race 9).</div>
+    <div class="controls" id="c1">${controls(1)}</div>
+    <div class="rounds-wrap" id="w1"></div><div id="f1"></div>`;
+
+  let timer, running=false;
+
+  function reset(){
+    running=false;clearTimeout(timer);
+    document.getElementById('w1').innerHTML='';
+    document.getElementById('f1').innerHTML='';
+    document.getElementById('run1').disabled=false;
+  }
+
+  document.getElementById('rst1').onclick=reset;
+  document.getElementById('run1').onclick=function(){
+    if(running)return;running=true;reset();running=true;
+    document.getElementById('run1').disabled=true;
+    const wrap=document.getElementById('w1'),fin=document.getElementById('f1');
+    const horses=makeHorses();
+    const groups=[0,1,2,3,4].map(i=>horses.slice(i*5,(i+1)*5));
+    const results=groups.map(g=>raceGroup(g));
+    const delay=()=>1060-parseInt(document.getElementById('spd1').value);
+
+    const firsts=results.map(r=>r[0]);
+    const seconds=results.map(r=>r[1]);
+    const thirds=results.map(r=>r[2]);
+    const r6=raceGroup(firsts),r7=raceGroup(seconds),r8=raceGroup(thirds);
+    const r9=raceGroup([r6[0],r6[1],r6[2],r7[0],r8[0]]);
+
+    const steps=[
+      // Step 0: Round 1 — all 5 group races
+      ()=>{
+        let racesHTML='';
+        groups.forEach((g,i)=>{
+          racesHTML+=raceBox(`Race ${i+1}`,results[i],(h,pos)=>pos===0?S.advance:pos<=2?S.racing:S.elim);
+        });
+        const b=roundBlock('Round 1','Group races','Races 1–5 · 5 groups of 5',racesHTML,
+          `Each group races independently. The winner of each group <span class="hi">advances to race 6</span>. 2nd and 3rd are kept for the bracket. Bottom 2 per group eliminated — <span class="hi">10 horses gone</span> already.`);
+        showBlock(wrap,b);
+      },
+      // Step 1: Race 6 — first-placers
+      ()=>{
+        const rHTML=raceBox('Race 6',r6,(h,i)=>i===0?S.champion:i<=2?S.advance:S.elim);
+        const b=roundBlock('Race 6','First-placers race','The 5 group winners',rHTML,
+          `The 5 group winners race. The winner is likely the overall fastest. Top 3 continue; bottom 2 are <span class="hi">eliminated with their remaining group members</span>.`);
+        showBlock(wrap,b);
+      },
+      // Step 2: Race 7 — second-placers
+      ()=>{
+        const rHTML=raceBox('Race 7',r7,(h,i)=>i===0?S.advance:S.elim);
+        const b=roundBlock('Race 7','Second-placers race','One horse from each group',rHTML,
+          `The 5 second-place horses race. Only the winner carries forward. The rest are <span class="hi">eliminated</span>.`);
+        showBlock(wrap,b);
+      },
+      // Step 3: Race 8 — third-placers
+      ()=>{
+        const rHTML=raceBox('Race 8',r8,(h,i)=>i===0?S.advance:S.elim);
+        const b=roundBlock('Race 8','Third-placers race','One horse from each group',rHTML,
+          `Same for third-place horses. Only the winner advances. 4 more horses eliminated.`);
+        showBlock(wrap,b);
+      },
+      // Step 4: Race 9 — championship
+      ()=>{
+        const rHTML=raceBox('Race 9',r9,(h,i)=>i===0?S.first:i===1?S.second:i===2?S.third:S.elim);
+        const b=roundBlock('Race 9','Championship','Top 3 of race 6, winners of races 7 & 8',rHTML,
+          `5 horses compete for 2nd and 3rd place overall. The top 3 here — combined with the race 6 winner — give us the final answer.`);
+        showBlock(wrap,b);
+        setTimeout(()=>{fin.innerHTML=finalBanner(r9.slice(0,3),9);running=false;document.getElementById('run1').disabled=false;},delay());
+      }
+    ];
+
+    let si=0;
+    function step(){if(!running||si>=steps.length)return;steps[si++]();if(si<steps.length)timer=setTimeout(step,delay());}
+    step();
+  };
+})();
+
+// ════════ STRATEGY 3 — Optimal 7 races ════════
+(function(){
+  const panel=document.getElementById('p2');
+  panel.innerHTML=`<div class="desc"><strong>Idea:</strong> Race 5 groups of 5. Race the 5 group winners — the overall fastest is immediately known, and logical deduction eliminates most others. Only 5 horses remain as candidates for 2nd and 3rd. Race those 5. Done in exactly 7 races.</div>
+    <div class="controls" id="c2">${controls(2)}</div>
+    <div class="rounds-wrap" id="w2"></div><div id="f2"></div>`;
+
+  let timer,running=false;
+
+  function reset(){
+    running=false;clearTimeout(timer);
+    document.getElementById('w2').innerHTML='';
+    document.getElementById('f2').innerHTML='';
+    document.getElementById('run2').disabled=false;
+  }
+
+  document.getElementById('rst2').onclick=reset;
+  document.getElementById('run2').onclick=function(){
+    if(running)return;running=true;reset();running=true;
+    document.getElementById('run2').disabled=true;
+    const wrap=document.getElementById('w2'),fin=document.getElementById('f2');
+    const horses=makeHorses();
+    const L=['A','B','C','D','E'];
+    const groups=[0,1,2,3,4].map(i=>horses.slice(i*5,(i+1)*5));
+    const results=groups.map(g=>raceGroup(g));
+    results.forEach((r,gi)=>r.forEach((h,pi)=>h.gl=L[gi]+(pi+1)));
+    const delay=()=>1060-parseInt(document.getElementById('spd2').value);
+
+    // Race 6
+    const winners=results.map(r=>r[0]);
+    const r6=raceGroup(winners);
+    const r6groups=r6.map(w=>results.find(r=>r[0].id===w.id));
+    const champion=r6[0];
+    const gA=r6groups[0],gB=r6groups[1],gC=r6groups[2],gD=r6groups[3],gE=r6groups[4];
+
+    // Candidates for 2nd/3rd: A2, A3, B1, B2, C1
+    const candidates=[gA[1],gA[2],gB[0],gB[1],gC[0]];
+    const r7=raceGroup(candidates);
+
+    // All horses by id → group result membership
+    const candIds=new Set(candidates.map(h=>h.id));
+    candIds.add(champion.id);
+
+    const steps=[
+      // Round 1: group races
+      ()=>{
+        let racesHTML='';
+        groups.forEach((g,i)=>{
+          racesHTML+=raceBox(`Race ${i+1} (Group ${L[i]})`,results[i],(h,pos)=>{
+            if(pos===0)return S.advance;
+            if(pos===1||pos===2)return S.second;
+            return S.elim;
+          });
+        });
+        const b=roundBlock('Round 1','Group races','Races 1–5',racesHTML,
+          `Label each horse by group and rank: <span class="hi">A1</span> = winner of group A, <span class="hi">B3</span> = 3rd in group B, etc. Within each group we know the order. Across groups, we know nothing yet.`);
+        showBlock(wrap,b);
+      },
+      // Race 6: championship
+      ()=>{
+        const r6StateOf=(h,i)=>{
+          if(i===0)return S.champion;
+          if(i===1||i===2)return S.advance;
+          return S.elim;
+        };
+        const rHTML=raceBox('Race 6',r6,r6StateOf);
+        const elimGroups=[gD,gE].filter(Boolean);
+        const elimNames=elimGroups.flat().map(h=>h.gl).join(', ');
+        const b=roundBlock('Race 6','Championship race','The 5 group winners',rHTML,
+          `Result: <span class="hi">${r6.map(h=>h.gl).join(' &gt; ')}</span>.
+          <br><br>
+          <span class="hi">${champion.gl} is the overall fastest</span> — confirmed.
+          <br>
+          Eliminated by logic (3 faster horses exist):
+          <br>
+          • All of group ${gD?gD[0].gl[0]:'D'} and group ${gE?gE[0].gl[0]:'E'} — their winners finished 4th and 5th.
+          <br>
+          • ${gC[1]?gC[1].gl:''}, ${gC[2]?gC[2].gl:''} — ${gC[0].gl} is already 3rd overall, these sit behind it.
+          <br>
+          • ${gB[2]?gB[2].gl+', '+gB[3].gl+', '+gB[4].gl:''} — ${gB[0].gl} is 2nd overall; anything below 2nd in that group can't reach top 3.
+          <br>
+          • ${gA[3]?gA[3].gl+', '+gA[4].gl:''} — can't beat A1, A2, A3.
+          <br><br>
+          Only <span class="hi">5 candidates remain</span> for 2nd and 3rd: ${candidates.map(h=>h.gl).join(', ')}.`);
+        showBlock(wrap,b);
+      },
+      // Race 7: final 5
+      ()=>{
+        const rHTML=raceBox('Race 7',r7,(h,i)=>{
+          if(i===0)return S.first;
+          if(i===1)return S.second;
+          return S.elim;
+        });
+        const b=roundBlock('Race 7','Final candidates','2nd and 3rd place decided',rHTML,
+          `Race the 5 remaining candidates. Top 2 finishers are <span class="hi">2nd and 3rd overall</span>. Combined with ${champion.gl} (confirmed #1 after race 6), we have our answer — in exactly 7 races.`);
+        showBlock(wrap,b);
+        setTimeout(()=>{
+          fin.innerHTML=finalBanner([champion,r7[0],r7[1]],7,' — guaranteed minimum');
+          running=false;document.getElementById('run2').disabled=false;
+        },delay());
+      }
+    ];
+
+    let si=0;
+    function step(){if(!running||si>=steps.length)return;steps[si++]();if(si<steps.length)timer=setTimeout(step,delay());}
+    step();
+  };
+})();
+</script>
+</body>
+</html>
