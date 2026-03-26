@@ -72,7 +72,6 @@ Requires an internet connection on first load to fetch fonts (Google Fonts) and 
 | File | Description |
 |---|---|
 | `ball_monte_carlo.html` | The simulation — self-contained, single file |
-| `thumbnail.html` | YouTube thumbnail design (1280x720) for the companion video |
 | `README.md` | This file |
 
 ---
