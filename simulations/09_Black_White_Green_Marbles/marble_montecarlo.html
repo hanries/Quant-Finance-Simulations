@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marble Monte Carlo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --border: #1e1e2e;
+    --black-marble: #3a3a4a;
+    --white-marble: #e8e8f0;
+    --green-marble: #2ecc71;
+    --accent: #f0c040;
+    --text: #c8c8d8;
+    --dim: #5a5a7a;
+    --success: #2ecc71;
+    --fail: #e74c3c;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.4rem, 4vw, 2.2rem);
+    color: #fff;
+    text-align: center;
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+  }
+
+  .subtitle {
+    color: var(--dim);
+    font-size: 0.75rem;
+    text-align: center;
+    margin-bottom: 36px;
+    letter-spacing: 0.05em;
+  }
+
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+    max-width: 860px;
+    margin-bottom: 16px;
+  }
+
+  @media (max-width: 600px) {
+    .main-grid { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  .card-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    color: var(--dim);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  /* Marble counts */
+  .marble-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .marble-dot {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: inset -3px -3px 6px rgba(0,0,0,0.4), inset 2px 2px 4px rgba(255,255,255,0.15);
+  }
+
+  .dot-black { background: var(--black-marble); }
+  .dot-white { background: var(--white-marble); }
+  .dot-green { background: var(--green-marble); }
+
+  .marble-label { font-size: 0.8rem; color: var(--text); flex: 1; }
+  .marble-count { font-size: 0.9rem; color: #fff; font-weight: 700; }
+
+  /* Big probability display */
+  .prob-display {
+    text-align: center;
+  }
+
+  .prob-fraction {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.5rem, 8vw, 4rem);
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .prob-decimal {
+    font-size: 0.85rem;
+    color: var(--dim);
+    margin-bottom: 12px;
+  }
+
+  .prob-label {
+    font-size: 0.7rem;
+    color: var(--dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Simulated result */
+  .sim-result {
+    text-align: center;
+  }
+
+  .sim-fraction {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.5rem, 8vw, 4rem);
+    font-weight: 800;
+    color: #fff;
+    line-height: 1;
+    margin-bottom: 4px;
+    transition: color 0.3s;
+  }
+
+  .sim-fraction.converging { color: var(--accent); }
+
+  .sim-stats {
+    font-size: 0.72rem;
+    color: var(--dim);
+    margin-bottom: 12px;
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    width: 100%;
+    max-width: 860px;
+    margin-bottom: 16px;
+  }
+
+  button {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #0a0a0f;
+    flex: 1;
+  }
+  .btn-primary:hover { background: #f5d060; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .btn-secondary {
+    background: var(--border);
+    color: var(--text);
+  }
+  .btn-secondary:hover { background: #2a2a3e; }
+
+  .speed-btns {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .speed-btn {
+    background: var(--border);
+    color: var(--dim);
+    padding: 12px 14px;
+    font-size: 0.7rem;
+  }
+  .speed-btn.active {
+    background: #2a2a3e;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+  .speed-btn:hover { color: var(--text); }
+
+  /* Progress bar */
+  .progress-wrap {
+    width: 100%;
+    max-width: 860px;
+    margin-bottom: 16px;
+  }
+
+  .progress-bar-bg {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.1s;
+  }
+
+  .progress-label {
+    font-size: 0.65rem;
+    color: var(--dim);
+    margin-top: 6px;
+    letter-spacing: 0.06em;
+  }
+
+  /* Trial log */
+  .log-card {
+    width: 100%;
+    max-width: 860px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+
+  .log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+
+  .log-scroll {
+    height: 180px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .log-entry {
+    display: grid;
+    grid-template-columns: 60px 1fr 80px 80px;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.7rem;
+    align-items: center;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; } }
+
+  .log-n { color: var(--dim); }
+  .log-last { }
+  .log-outcome-win { color: var(--success); font-weight: 700; }
+  .log-outcome-lose { color: var(--fail); }
+  .log-running { color: var(--accent); }
+
+  /* Convergence chart */
+  .chart-card {
+    width: 100%;
+    max-width: 860px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  canvas {
+    width: 100%;
+    height: 200px;
+    display: block;
+  }
+
+  /* condition breakdown */
+  .breakdown {
+    width: 100%;
+    max-width: 860px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  @media (max-width: 500px) { .breakdown { grid-template-columns: 1fr; } }
+
+  .breakdown-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+  }
+
+  .breakdown-title {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .breakdown-title.green { color: var(--green-marble); }
+  .breakdown-title.white { color: var(--white-marble); }
+
+  .breakdown-stat {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #fff;
+  }
+
+  .breakdown-detail {
+    font-size: 0.68rem;
+    color: var(--dim);
+    margin-top: 4px;
+  }
+
+  .theory-val {
+    font-size: 0.7rem;
+    color: var(--accent);
+    margin-top: 6px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Marble Probability — Monte Carlo</h1>
+<p class="subtitle">200 BLACK · 400 WHITE · 600 GREEN · 1200 TOTAL</p>
+
+<div class="main-grid">
+  <div class="card">
+    <div class="card-label">Setup</div>
+    <div class="marble-row">
+      <div class="marble-dot dot-black"></div>
+      <span class="marble-label">Black marbles</span>
+      <span class="marble-count">200</span>
+    </div>
+    <div class="marble-row">
+      <div class="marble-dot dot-white"></div>
+      <span class="marble-label">White marbles</span>
+      <span class="marble-count">400</span>
+    </div>
+    <div class="marble-row">
+      <div class="marble-dot dot-green"></div>
+      <span class="marble-label">Green marbles</span>
+      <span class="marble-count">600</span>
+    </div>
+    <div style="margin-top:14px; font-size:0.7rem; color:var(--dim); line-height:1.6;">
+      Event: when the last black marble is drawn, at least 1 white <em>and</em> 1 green remain.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Theoretical Answer</div>
+    <div class="prob-display">
+      <div class="prob-fraction">7/12</div>
+      <div class="prob-decimal">≈ 0.58333…</div>
+      <div class="prob-label">exact probability</div>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="btn-primary" id="runBtn" onclick="startSim()">▶ Run Simulation</button>
+  <button class="btn-secondary" onclick="resetSim()">Reset</button>
+  <div class="speed-btns">
+    <span style="font-size:0.65rem;color:var(--dim);letter-spacing:.08em;">SPEED:</span>
+    <button class="speed-btn active" id="s1" onclick="setSpeed(1)">1×</button>
+    <button class="speed-btn" id="s2" onclick="setSpeed(10)">10×</button>
+    <button class="speed-btn" id="s3" onclick="setSpeed(100)">100×</button>
+  </div>
+</div>
+
+<div class="progress-wrap">
+  <div class="progress-bar-bg">
+    <div class="progress-bar-fill" id="progressBar"></div>
+  </div>
+  <div class="progress-label" id="progressLabel">0 / 10,000 trials</div>
+</div>
+
+<div class="breakdown">
+  <div class="breakdown-card">
+    <div class="breakdown-title green">▸ Last marble = Green</div>
+    <div class="breakdown-stat" id="greenWinRate">—</div>
+    <div class="breakdown-detail" id="greenWinDetail">wins / trials with last=green</div>
+    <div class="theory-val">Theory: 2/3 ≈ 0.6667</div>
+  </div>
+  <div class="breakdown-card">
+    <div class="breakdown-title white">▸ Last marble = White</div>
+    <div class="breakdown-stat" id="whiteWinRate">—</div>
+    <div class="breakdown-detail" id="whiteWinDetail">wins / trials with last=white</div>
+    <div class="theory-val">Theory: 3/4 = 0.7500</div>
+  </div>
+</div>
+
+<div class="log-card">
+  <div class="log-header">
+    <span class="card-label" style="margin:0">Recent Trials</span>
+    <span style="font-size:0.65rem;color:var(--dim)" id="simResult">—</span>
+  </div>
+  <div class="log-scroll" id="logScroll">
+    <div style="font-size:0.7rem;color:var(--dim);padding:8px 0;">Run simulation to see trials...</div>
+  </div>
+</div>
+
+<div class="chart-card">
+  <div class="card-label" style="margin-bottom:14px">Convergence to 7/12</div>
+  <canvas id="chartCanvas"></canvas>
+</div>
+
+<script>
+const TOTAL = 10000;
+let trials = 0, wins = 0;
+let greenTrials = 0, greenWins = 0;
+let whiteTrials = 0, whiteWins = 0;
+let running = false;
+let speed = 1;
+let rafId = null;
+let chartData = [];
+const LOG_MAX = 50;
+let logEntries = [];
+
+function setSpeed(s) {
+  speed = s;
+  ['s1','s2','s3'].forEach(id => document.getElementById(id).classList.remove('active'));
+  if (s===1) document.getElementById('s1').classList.add('active');
+  else if (s===10) document.getElementById('s2').classList.add('active');
+  else document.getElementById('s3').classList.add('active');
+}
+
+// Efficient simulation: we only need to know
+// 1) What is the last marble overall?
+// 2) Given that, what is the last marble of the other relevant colors?
+// We do this by sampling positions directly rather than shuffling 1200 marbles.
+
+function runOneTrial() {
+  // Determine last marble overall: random marble from 1200
+  const lastIdx = Math.floor(Math.random() * 1200); // 0-199=black, 200-599=white, 600-1199=green
+  const lastColor = lastIdx < 200 ? 'black' : lastIdx < 600 ? 'white' : 'green';
+
+  if (lastColor === 'black') {
+    return { win: false, lastColor };
+  }
+
+  if (lastColor === 'green') {
+    // Need: last black comes before last white (among 1199 remaining: 200B, 400W, 599G)
+    // Equivalent: among all 600 black+white marbles, is the last one white?
+    // Sample: pick a random one from 600 black+white. If it's white => win.
+    const bwIdx = Math.floor(Math.random() * 600); // 0-199=black, 200-599=white
+    const win = bwIdx >= 200;
+    return { win, lastColor };
+  }
+
+  if (lastColor === 'white') {
+    // Need: last black comes before last green (among 1199 remaining: 200B, 399W, 600G)
+    // Among all 800 black+green marbles, is the last one green?
+    const bgIdx = Math.floor(Math.random() * 800); // 0-199=black, 200-799=green
+    const win = bgIdx >= 200;
+    return { win, lastColor };
+  }
+}
+
+function colorLabel(c) {
+  if (c==='green') return `<span style="color:var(--green-marble)">GREEN</span>`;
+  if (c==='white') return `<span style="color:var(--white-marble)">WHITE</span>`;
+  return `<span style="color:var(--black-marble)">BLACK</span>`;
+}
+
+function updateLog(n, lastColor, win) {
+  logEntries.unshift({ n, lastColor, win });
+  if (logEntries.length > LOG_MAX) logEntries.pop();
+
+  const runRate = trials > 0 ? (wins/trials).toFixed(4) : '—';
+
+  const html = logEntries.map(e => `
+    <div class="log-entry">
+      <span class="log-n">#${e.n}</span>
+      <span class="log-last">Last: ${colorLabel(e.lastColor)}</span>
+      <span class="${e.win ? 'log-outcome-win' : 'log-outcome-lose'}">${e.win ? '✓ WIN' : '✗ LOSE'}</span>
+      <span class="log-running">${runRate}</span>
+    </div>
+  `).join('');
+
+  document.getElementById('logScroll').innerHTML = html;
+}
+
+function updateUI() {
+  const rate = trials > 0 ? (wins/trials) : 0;
+  const pct = (rate * 100).toFixed(2);
+
+  document.getElementById('progressBar').style.width = (trials/TOTAL*100)+'%';
+  document.getElementById('progressLabel').textContent = `${trials.toLocaleString()} / ${TOTAL.toLocaleString()} trials`;
+
+  const el = document.getElementById('simResult');
+  el.textContent = trials > 0 ? `${wins} wins — estimated P = ${rate.toFixed(5)}` : '—';
+
+  const gRate = greenTrials > 0 ? (greenWins/greenTrials) : null;
+  const wRate = whiteTrials > 0 ? (whiteWins/whiteTrials) : null;
+
+  document.getElementById('greenWinRate').textContent = gRate !== null ? gRate.toFixed(4) : '—';
+  document.getElementById('greenWinDetail').textContent = `${greenWins} / ${greenTrials} trials with last=green`;
+  document.getElementById('whiteWinRate').textContent = wRate !== null ? wRate.toFixed(4) : '—';
+  document.getElementById('whiteWinDetail').textContent = `${whiteWins} / ${whiteTrials} trials with last=white`;
+
+  drawChart();
+}
+
+let chartPoints = [];
+
+function drawChart() {
+  const canvas = document.getElementById('chartCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.offsetWidth;
+  const h = canvas.offsetHeight;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const pad = { top: 16, right: 20, bottom: 30, left: 50 };
+  const cw = w - pad.left - pad.right;
+  const ch = h - pad.top - pad.bottom;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Grid
+  const yLines = [0.4, 0.5, 7/12, 0.7, 0.8];
+  ctx.strokeStyle = '#1e1e2e';
+  ctx.lineWidth = 1;
+  yLines.forEach(y => {
+    const py = pad.top + ch * (1 - (y - 0.35) / 0.5);
+    ctx.beginPath(); ctx.moveTo(pad.left, py); ctx.lineTo(pad.left+cw, py); ctx.stroke();
+    ctx.fillStyle = '#3a3a5a';
+    ctx.font = '10px Space Mono';
+    ctx.textAlign = 'right';
+    ctx.fillText(y.toFixed(2), pad.left - 6, py + 4);
+  });
+
+  // Theory line
+  const ty = pad.top + ch * (1 - (7/12 - 0.35)/0.5);
+  ctx.strokeStyle = 'rgba(240,192,64,0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6,4]);
+  ctx.beginPath(); ctx.moveTo(pad.left, ty); ctx.lineTo(pad.left+cw, ty); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(240,192,64,0.7)';
+  ctx.font = '10px Space Mono';
+  ctx.textAlign = 'left';
+  ctx.fillText('7/12 = 0.5833', pad.left+4, ty-5);
+
+  if (chartPoints.length < 2) return;
+
+  // Simulation line
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  chartPoints.forEach((pt, i) => {
+    const x = pad.left + (pt.n / TOTAL) * cw;
+    const y = pad.top + ch * (1 - (pt.r - 0.35)/0.5);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+}
+
+function batchRun() {
+  if (!running || trials >= TOTAL) {
+    running = false;
+    document.getElementById('runBtn').disabled = false;
+    document.getElementById('runBtn').textContent = trials >= TOTAL ? '✓ Complete' : '▶ Run Simulation';
+    updateUI();
+    return;
+  }
+
+  const batchSize = speed === 1 ? 1 : speed === 10 ? 10 : 200;
+  let lastResult = null;
+
+  for (let i = 0; i < batchSize && trials < TOTAL; i++) {
+    const result = runOneTrial();
+    trials++;
+    if (result.win) wins++;
+    if (result.lastColor === 'green') { greenTrials++; if (result.win) greenWins++; }
+    if (result.lastColor === 'white') { whiteTrials++; if (result.win) whiteWins++; }
+    lastResult = result;
+
+    // Record chart point every 50 trials
+    if (trials % 50 === 0 || trials <= 20) {
+      chartPoints.push({ n: trials, r: wins/trials });
+    }
+  }
+
+  if (lastResult && (speed === 1 || trials <= 100)) {
+    updateLog(trials, lastResult.lastColor, lastResult.win);
+  } else {
+    updateUI();
+  }
+
+  if (speed === 1) updateUI();
+  else if (trials % (speed * 5) === 0) updateUI();
+
+  rafId = requestAnimationFrame(batchRun);
+}
+
+function startSim() {
+  if (running) return;
+  if (trials >= TOTAL) resetSim();
+  running = true;
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('runBtn').textContent = '⏳ Running…';
+  batchRun();
+}
+
+function resetSim() {
+  running = false;
+  if (rafId) cancelAnimationFrame(rafId);
+  trials = 0; wins = 0;
+  greenTrials = 0; greenWins = 0;
+  whiteTrials = 0; whiteWins = 0;
+  logEntries = []; chartPoints = [];
+  document.getElementById('runBtn').disabled = false;
+  document.getElementById('runBtn').textContent = '▶ Run Simulation';
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('progressLabel').textContent = '0 / 10,000 trials';
+  document.getElementById('simResult').textContent = '—';
+  document.getElementById('greenWinRate').textContent = '—';
+  document.getElementById('whiteWinRate').textContent = '—';
+  document.getElementById('greenWinDetail').textContent = 'wins / trials with last=green';
+  document.getElementById('whiteWinDetail').textContent = 'wins / trials with last=white';
+  document.getElementById('logScroll').innerHTML = '<div style="font-size:0.7rem;color:var(--dim);padding:8px 0;">Run simulation to see trials...</div>';
+  drawChart();
+}
+
+window.addEventListener('resize', drawChart);
+drawChart();
+</script>
+</body>
+</html>
